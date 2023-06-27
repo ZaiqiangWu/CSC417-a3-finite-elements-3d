@@ -20,6 +20,44 @@ template<typename ENERGY, typename FORCE, typename STIFFNESS>
 inline void implicit_euler(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, 
                             const Eigen::SparseMatrixd &mass,  ENERGY &energy, FORCE &force, STIFFNESS &stiffness, 
                             Eigen::VectorXd &tmp_qdot, Eigen::VectorXd &tmp_force, Eigen::SparseMatrixd &tmp_stiffness) {
-    
+    Eigen::VectorXd qdot_guess = qdot;
+
+
+    //std::cout<<qdot_guess.hasNaN()<<std::endl;
+
+    auto H=[&](Eigen::SparseMatrixd &tmp_H,Eigen::VectorXd &qdot2)
+    {
+        stiffness(tmp_stiffness,q+dt*qdot2,qdot2);
+
+        tmp_H=mass -dt*dt* tmp_stiffness;
+    };
+    //gradient of object function
+    auto g=[&](Eigen::VectorXd &g, Eigen::VectorXd &qdot2)
+    {
+        //std::cout<<q.hasNaN()<<std::endl;
+        force(tmp_force,q+dt*qdot2,qdot2);
+        g=-dt*tmp_force+mass*(qdot2-qdot);
+        //Eigen::SparseMatrixd Hessian;
+        //H(Hessian,qdot2);
+        //g+=Hessian*qdot2;
+    };
+    auto e = [&](Eigen::Ref<const Eigen::VectorXd> qdot_1)->double
+    {
+        double eng;
+        Eigen::VectorXd qdot_2=qdot_1;
+        eng = energy(qdot_2);
+        return eng;
+    };
+    Eigen::VectorXd grad;
+    Eigen::SparseMatrixd tmp_H;
+
+
+    std::cout<<"newtons method start"<<std::endl;
+    newtons_method(qdot_guess,e,g,H,5,grad,tmp_H);
+    qdot = qdot_guess;
+    q = q + qdot*dt;
+
+    std::cout<<"newtons method end"<<std::endl;
+
 
 }

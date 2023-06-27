@@ -12,3 +12,5 @@
 void dV_linear_tetrahedron_dq(Eigen::Vector12d &dV, Eigen::Ref<const Eigen::VectorXd> q, 
                           Eigen::Ref<const Eigen::MatrixXd> V, Eigen::Ref<const Eigen::RowVectorXi> element, double volume,
                           double C, double D);
+
+void compute_dFdq(Eigen::MatrixXd &dFdq,Eigen::Ref<const Eigen::Matrix3d> inv_Dm);

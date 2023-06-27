@@ -219,14 +219,15 @@ Eigen::SparseMatrixd tmp_stiffness;
 std::vector<std::pair<Eigen::Vector3d, unsigned int>> spring_points;
 
 bool skinning_on = true;
-bool fully_implicit = false;
+bool fully_implicit = true;
 bool bunny = true; 
 
 //selection spring
 double k_selected = 1e5;
 
-inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, double t) {  
+inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, double t) {
 
+    std::cout<<"simulation step start"<<std::endl;
     double V_ele, T_ele, KE,PE;
 
     spring_points.clear();
@@ -260,13 +261,20 @@ inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, doubl
         return E;
     };
 
-    auto force = [&](Eigen::VectorXd &f, Eigen::Ref<const Eigen::VectorXd> q2, Eigen::Ref<const Eigen::VectorXd> qdot2) { 
-        
-            assemble_forces(f, P.transpose()*q2+x0, P.transpose()*qdot2, V, T, v0, C,D);
+    auto force = [&](Eigen::VectorXd &f, Eigen::Ref<const Eigen::VectorXd> q2, Eigen::Ref<const Eigen::VectorXd> qdot2) {
 
-            for(unsigned int pickedi = 0; pickedi < spring_points.size(); pickedi++) {
+        //std::cout<<q2.hasNaN()<<std::endl;
+        //std::cout<<"f"<<std::endl;
+        //std::cout<<f.hasNaN()<<std::endl;
+        //std::cout<<q2<<std::endl;
+
+        assemble_forces(f, P.transpose()*q2+x0, P.transpose()*qdot2, V, T, v0, C,D);
+        //std::cout<<f.hasNaN()<<std::endl;
+
+        for(unsigned int pickedi = 0; pickedi < spring_points.size(); pickedi++) {
                 dV_spring_particle_particle_dq(dV_mouse, spring_points[pickedi].first, (P.transpose()*q2+x0).segment<3>(spring_points[pickedi].second), 0.0, k_selected_now);
                 f.segment<3>(3*Visualize::picked_vertices()[pickedi]) -= dV_mouse.segment<3>(3);
+                //std::cout<<dV_mouse.segment<3>(3)<<std::endl;
             }
 
             f = P*f; 
@@ -279,10 +287,22 @@ inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, doubl
         };
 
         if(fully_implicit)
+        {
+            std::cout<<"implicit euler start"<<std::endl;
+
             implicit_euler(q, qdot, dt, M, energy, force, stiffness, tmp_qdot, tmp_force, tmp_stiffness);
+            std::cout<<"implicit euler end"<<std::endl;
+
+        }
         else
+        {
+            std::cout<<"linearly implicit euler start"<<std::endl;
+
             linearly_implicit_euler(q, qdot, dt, M, force, stiffness, tmp_force, tmp_stiffness);
-        
+            std::cout<<"linearly implicit euler end"<<std::endl;
+
+        }
+
 
         
     KE = 0;
@@ -297,7 +317,9 @@ inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, doubl
     }
     
     Visualize::add_energy(t, KE, PE);
-        
+    std::cout<<"simulation step end"<<std::endl;
+
+
 }
 
 inline void draw(Eigen::Ref<const Eigen::VectorXd> q, Eigen::Ref<const Eigen::VectorXd> qdot, double t) {
